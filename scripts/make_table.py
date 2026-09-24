@@ -7,7 +7,8 @@ ROWS = [("g_only", "G only (ignores the instruction)"),
         ("additive", "GR-ConvNet + CLIP, additive (LGD baseline)"),
         ("gxs_zs", "G x S, zero-shot S (temperature/bias only)"),
         ("gxs_full", "G x S, S loss on all patches"),
-        ("gxs", "G x S (ours)")]
+        ("gxs", "G x S (ours)"),
+        ("oracle", "G x perfect selection (upper bound)")]
 
 
 def main(d):
