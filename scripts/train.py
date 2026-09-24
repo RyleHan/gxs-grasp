@@ -60,7 +60,7 @@ def main():
     text_index, text_feats, clip_rows, mm = load_clip_cache(args.clip_dir)
     is_s = args.model.startswith("s")
     kw = dict(text_index=text_index, clip_index=clip_rows, need_image=not is_s,
-              pick_one=args.model == "additive")
+              pick_one=args.model == "additive", need_masks=is_s)
     tr = SceneDataset(args.data, "train", **kw)
     va = SceneDataset(args.data, "val", **kw)
     mk = lambda ds, sh: DataLoader(ds, args.bs, shuffle=sh, num_workers=args.workers,

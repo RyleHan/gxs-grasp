@@ -47,12 +47,13 @@ class SceneDataset(Dataset):
     """
 
     def __init__(self, root, split, text_index, clip_index=None, size=224, grid=28,
-                 max_inst=16, need_image=True, pick_one=False):
+                 max_inst=16, need_image=True, pick_one=False, need_masks=True):
         self.ann = load_annotations(root)
         self.root, self.size, self.grid = root, size, grid
         self.scenes = self.ann["splits"][split]
         self.text_index, self.clip_index = text_index, clip_index
         self.max_inst, self.need_image, self.pick_one = max_inst, need_image, pick_one
+        self.need_masks = need_masks                    # S-branch region masks (skip when training G)
 
     def __len__(self):
         return len(self.scenes)
@@ -68,8 +69,10 @@ class SceneDataset(Dataset):
             "scene": sc,
             "clip_row": -1 if self.clip_index is None else self.clip_index[sc],
             "text_ids": torch.tensor([self.text_index[t] for _, _, t, _ in items]),
-            "inst_masks": torch.from_numpy(np.stack([region_mask(g, self.grid) for *_, g in items])),
-            "cand_mask": torch.from_numpy(region_mask(all_rects, self.grid)),
+            "inst_masks": torch.from_numpy(np.stack([region_mask(g, self.grid) for *_, g in items]))
+            if self.need_masks else torch.zeros(len(items), self.grid, self.grid, dtype=torch.bool),
+            "cand_mask": torch.from_numpy(region_mask(all_rects, self.grid))
+            if self.need_masks else torch.zeros(self.grid, self.grid, dtype=torch.bool),
             "obj_ids": torch.tensor([o for o, *_ in items]),
         }
         if self.need_image:
