@@ -5,6 +5,7 @@ set -euo pipefail
 DATA=$1; CLIP=$2; RUNS=$3; GE=${4:-30}; SE=${5:-10}
 W=${WORKERS:-2}
 mkdir -p "$RUNS/results"
+[ -f "$DATA/images224.u8.json" ] || python scripts/cache_images.py --data "$DATA"
 
 train() { # name model epochs
   [ -f "$RUNS/$1/last.pt" ] && { echo "skip $1 (done)"; return; }

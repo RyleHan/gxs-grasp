@@ -7,6 +7,7 @@ Two views of the same data:
   SampleDataset one item per (image, instruction): the standard LGD protocol,
                 used for evaluation and for the entangled baseline.
 """
+import json
 import os
 import pickle
 import random
@@ -24,9 +25,31 @@ def load_annotations(root):
         return pickle.load(f)
 
 
+_IMAGE_CACHE = {}
+
+
+def _cached(root, size):
+    """Memmap written by scripts/cache_images.py, if present (opened lazily per worker)."""
+    key = (root, size)
+    if key not in _IMAGE_CACHE:
+        path = os.path.join(root, f"images{size}.u8")
+        if os.path.exists(path + ".json"):
+            with open(path + ".json") as f:
+                meta = json.load(f)
+            _IMAGE_CACHE[key] = (np.memmap(path, dtype=np.uint8, mode="r", shape=tuple(meta["shape"])),
+                                 meta["rows"])
+        else:
+            _IMAGE_CACHE[key] = None
+    return _IMAGE_CACHE[key]
+
+
 def load_image(root, scene, size):
-    img = Image.open(os.path.join(root, "images", f"{scene}.jpg")).convert("RGB")
-    x = np.asarray(img.resize((size, size), Image.BILINEAR), dtype=np.float32) / 255.0
+    cache = _cached(root, size)
+    if cache is not None:
+        x = cache[0][cache[1][scene]].astype(np.float32) / 255.0
+    else:
+        img = Image.open(os.path.join(root, "images", f"{scene}.jpg")).convert("RGB")
+        x = np.asarray(img.resize((size, size), Image.BILINEAR), dtype=np.float32) / 255.0
     x = x - x.mean()                                # per-image centring, as in GR-ConvNet
     return torch.from_numpy(x.transpose(2, 0, 1).copy())
 

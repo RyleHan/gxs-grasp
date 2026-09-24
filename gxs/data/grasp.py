@@ -5,6 +5,7 @@ Rectangles are (x, y, w, h, theta_deg) in pixels, as stored in Grasp-Anything++:
 the success criterion follow the GR-ConvNet / LGD code (MIT licensed) so that our
 numbers use the same protocol: IoU > 0.25 and angle difference < 30 degrees.
 """
+import cv2
 import numpy as np
 from skimage.draw import polygon
 
@@ -38,16 +39,17 @@ def draw_maps(rects, size):
     angle is encoded as (cos 2a, sin 2a) because a parallel gripper is symmetric
     under 180 degrees; w and h are normalised by W_NORM.
     Returns float32 array (5, size, size): pos, cos, sin, w, h.
+    Rasterised with cv2.fillPoly (sub-pixel, 4 fractional bits), ~10x faster than
+    drawing each polygon with skimage.
     """
     out = np.zeros((5, size, size), dtype=np.float32)
     for x, y, w, h, th in rects:
-        rr, cc = polygon(*corners((x, y, w / 3, h, th)).T, shape=(size, size))
+        pts = corners((x, y, w / 3, h, th))[:, ::-1]                # (row, col) -> (x, y)
+        pts = np.round(pts * 16).astype(np.int32)[None]
         a = -np.deg2rad(th)
-        out[0, rr, cc] = 1.0
-        out[1, rr, cc] = np.cos(2 * a)
-        out[2, rr, cc] = np.sin(2 * a)
-        out[3, rr, cc] = min(w, W_NORM) / W_NORM
-        out[4, rr, cc] = min(h, W_NORM) / W_NORM
+        vals = (1.0, np.cos(2 * a), np.sin(2 * a), min(w, W_NORM) / W_NORM, min(h, W_NORM) / W_NORM)
+        for c, v in enumerate(vals):
+            cv2.fillPoly(out[c], pts, float(v), lineType=cv2.LINE_8, shift=4)
     return out
 
 
