@@ -1,0 +1,126 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage[pagenumbers]{cvpr}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xspace}
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+\newcommand{\ours}{G$\times$S\xspace}
+\newcommand{\TODO}[1]{\textbf{\color{red}[#1]}}
+\def\confName{CVPR}
+\def\confYear{2026}
+
+\title{\ours: Decoupling \emph{How} to Grasp from \emph{What} to Grasp\\for Language-Driven Grasp Detection}
+\author{Erhan Lai\\{\small\url{https://github.com/RyleHan/gxs-grasp}}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Language-driven grasp detection asks for a grasp rectangle that satisfies a natural-language instruction.
+Current methods inject the instruction into the whole grasp network, so the text also has to shape
+the grasp geometry, which it does not determine.
+We factorise the grasp quality map into a language-agnostic \emph{graspability} map $G$ and an
+instruction-conditioned \emph{selection} map $S$.
+$G$ is a GR-ConvNet trained on the union of all grasps annotated in an image;
+$S$ compares frozen dense CLIP features with the instruction and only has to choose among graspable
+regions. Both are supervised with labels that Grasp-Anything++ already provides: every image carries
+several instructions, and their grasps act as each other's negatives, so no masks are needed.
+On the official test split \ours raises the success rate from \TODO{x} to \TODO{y}, and the rate at
+which both grasps of an image pair are correct from \TODO{a} to \TODO{b}.
+\end{abstract}
+
+\section{Introduction}
+A robot asked to \emph{``grip the keychain by its ring''} has to answer two questions:
+which part of the image the sentence refers to, and how a parallel gripper should close on it.
+Grasp-Anything++~\cite{vuong2024lgd} made this task learnable at scale, pairing about a million
+synthetic scenes with grasp instructions. Methods trained on it~\cite{vuong2024lgd,vo2024maskgrasp}
+condition the entire detector on the text.
+
+Two properties of the data suggest a simpler structure.
+First, the opening width and angle of a grasp at a given pixel follow from the object's shape;
+the sentence only decides \emph{where} to grasp.
+Second, instructions come in groups: one image carries a grasp instruction for each annotated object,
+and these point to different regions. The union of their grasps says where the image can be grasped
+at all; their differences say what each sentence adds.
+
+We build on both observations. \ours predicts $Q = G\cdot S$, where $G$ ignores the language and $S$
+selects among the graspable regions. Our contributions are:
+(i) a factorised detector whose geometry heads never see the text;
+(ii) a sibling-contrast loss that supervises selection with the other instructions of the same image,
+without any masks; and
+(iii) a paired metric that a model ignoring the instruction cannot pass, together with an analysis of
+the data showing that most part-level labels do not change with the part named in the instruction.
+
+\section{Related Work}
+\textbf{Language-driven grasping.}
+CLIPort~\cite{shridhar2021cliport} fuses CLIP~\cite{radford2021clip} features into dense
+pick-and-place affordances. CROG~\cite{tziafas2023crog} extends CLIP-based referring segmentation~\cite{wang2022cris}
+with grasp maps. On Grasp-Anything++~\cite{vuong2024graspanything,vuong2024lgd}, LGD casts grasp detection as
+conditional diffusion, and mask-guided methods~\cite{vo2024maskgrasp,bhat2025maplegrasp} use object
+masks to focus the grasp features. Unlike these, we multiply at the \emph{output} rather than the
+feature level, keep geometry language-free, and need no mask annotations.
+
+\textbf{Dense CLIP features.}
+CLIP patch tokens are poorly localised; MaskCLIP~\cite{zhou2022maskclip} uses the value embedding of the
+last attention layer and ClearCLIP~\cite{lan2024clearclip} drops its residual and feed-forward paths.
+We adopt this combination without training.
+
+\section{Method}
+Given an RGB image $I$ and an instruction $\ell$, we predict $g=(x,y,w,h,\theta)$.
+
+\textbf{Graspability $G$.}
+A GR-ConvNet~\cite{kumra2020grconvnet} maps $I$ to five $224{\times}224$ maps: quality logits $q$,
+$\cos2\theta$, $\sin2\theta$ (a parallel gripper is symmetric under $180^\circ$), opening $w$ and jaw
+size $h$. None of them receive $\ell$. For an image with instructions $\ell_1,\dots,\ell_K$ and grasp
+sets $\mathcal{G}_1,\dots,\mathcal{G}_K$, targets are rendered from $\bigcup_k\mathcal{G}_k$:
+\begin{equation}
+\mathcal{L}_G=\mathrm{BCE}(q,\hat q)+\sum_{m\in\{\cos,\sin,w,h\}}\big\lVert (m-\hat m)\odot\hat q\big\rVert_{\text{sL1}},
+\end{equation}
+where $\hat q$ marks the centre third of each rectangle. Supervising geometry only where a grasp
+exists matters: with GR-ConvNet's dense regression the predicted opening collapsed to
+$\sim$15\,px ($\sim$80\,px ground truth) even when overfitting 70 scenes.
+
+\textbf{Selection $S$.}
+Frozen CLIP ViT-B/16 at $448{\times}448$ gives $28{\times}28$ patch features $v_p$ (value-only last
+block); $t$ is the CLIP text embedding. With zero-initialised residual adapters $\phi,\psi$,
+\begin{equation}
+S(p\mid\ell)=\sigma\!\big(\tau\,\langle\phi(v_p),\psi(t)\rangle+b\big).
+\end{equation}
+For instruction $\ell_k$, patches covered by $\mathcal{G}_k$ are positives, patches covered by a
+sibling $\mathcal{G}_{j\neq k}$ are negatives, and the rest are ignored, since background is already
+suppressed by $G$. We use a class-balanced BCE over these patches.
+
+\textbf{Inference.}
+$Q=\sigma(q)\cdot S\!\uparrow$ ($S$ bilinearly upsampled); the grasp centre is $\arg\max Q$ and
+$\theta,w,h$ are read from $G$'s maps at that pixel. The backbone runs once per image;
+a new instruction costs one dot product.
+
+\section{Experiments}
+\textbf{Data.} We keep the official LGD test splits (seen / unseen categories).
+The official training split contains only \TODO{n} multi-object scenes, so we add \TODO{n}
+multi-object scenes from the full release, requiring that (R1) no scene appears in a test split,
+(R2) every object name belongs to the official training vocabulary, and (R3) no two objects share a
+name. In the resulting training set, \TODO{r}\% of part pairs of the same object have identical grasp labels,
+so language mostly has to pick the object.
+
+\textbf{Metrics.} \emph{Success}: IoU\,$>0.25$ and $|\Delta\theta|<30^\circ$ with a ground-truth grasp
+of the instruction~\cite{vuong2024lgd}. \emph{Paired}: for each pair of objects in a multi-object
+test image, both grasps must succeed; ignoring the instruction gives almost zero.
+\emph{Select}: the predicted centre lies on the target object.
+
+\textbf{Results.}
+\TODO{table + discussion}
+
+\section{Conclusion}
+Separating how to grasp from what to grasp lets each part learn from the supervision it actually
+needs. The selection map inherits CLIP's open vocabulary, while geometry is learned once per image.
+The main limitation is CLIP's coarse $28{\times}28$ grid, which limits part-level selection;
+the labels of Grasp-Anything++ rarely distinguish parts anyway.
+
+{\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{main}
+}
+\end{document}

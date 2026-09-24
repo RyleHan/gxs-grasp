@@ -37,7 +37,10 @@ class DenseCLIP:
         out = []
         for i in range(0, len(prompts), batch):
             t = self.tok(prompts[i:i + batch], padding=True, truncation=True, return_tensors="pt").to(self.device)
-            out.append(F.normalize(self.model.get_text_features(**t).float(), dim=-1).cpu())
+            # text_model + projection instead of get_text_features(): the latter changed its
+            # return type across transformers versions (tensor vs. ModelOutput)
+            feats = self.model.text_projection(self.model.text_model(**t).pooler_output)
+            out.append(F.normalize(feats.float(), dim=-1).cpu())
         return torch.cat(out)                                           # (N, 512)
 
     @torch.no_grad()
