@@ -75,6 +75,10 @@ def main():
     else:
         net = Selector(adapters=args.model != "s_zs")
     net.to(dev)
+    if dev == "cuda":
+        torch.backends.cudnn.benchmark = True          # fixed 224x224 inputs
+        if not is_s:
+            net = net.to(memory_format=torch.channels_last)
     lr = args.lr if args.model != "s_zs" else 1e-2
     opt = torch.optim.Adam(net.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.epochs * len(tl))
@@ -92,6 +96,8 @@ def main():
             return loss, parts, logits
         with torch.autocast("cuda", enabled=amp):
             x = batch["image"].to(dev, non_blocking=True)
+            if dev == "cuda":
+                x = x.contiguous(memory_format=torch.channels_last)
             if args.model == "g":
                 pred = net(x)
                 target = batch["g_maps"].to(dev, non_blocking=True)
