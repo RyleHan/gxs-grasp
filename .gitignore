@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.DS_Store
+/data/
+/cache/
+/raw/
+/runs/
+/clip/
+*.f16
+*.pt
+!splits/**
+.ipynb_checkpoints/
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg

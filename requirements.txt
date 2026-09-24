@@ -1,0 +1,9 @@
+torch>=2.1
+transformers>=4.44
+huggingface_hub>=0.23
+scikit-image>=0.21
+numpy
+pillow
+requests
+tqdm
+matplotlib
