@@ -14,9 +14,10 @@ train() { # name model epochs
 }
 train g        g        "$GE"
 train additive additive "$GE"
-train s        s        "$SE"
-train s_full   s_full   "$SE"
-train s_zs     s_zs     "$SE"
+if [ ! -f "$RUNS/s/last.pt" ] || [ ! -f "$RUNS/s_full/last.pt" ] || [ ! -f "$RUNS/s_zs/last.pt" ]; then
+  python scripts/train_s.py --data "$DATA" --clip-dir "$CLIP" --out "$RUNS" --epochs "$SE" \
+         --workers "$W" | tee "$RUNS/s_all.log"
+fi
 
 evaluate() { # tag method split extra-args...
   local tag=$1 m=$2 split=$3; shift 3
