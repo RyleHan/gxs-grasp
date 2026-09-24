@@ -3,6 +3,7 @@
   --method gxs       Q = sigmoid(G) * sigmoid(S)          (--g and --s)
   --method g_only    Q = G, i.e. ignore the instruction  (--g)
   --method additive  entangled GR-ConvNet + CLIP         (--additive)
+  --method oracle    Q = sigmoid(G) * [target region]    (--g) upper bound with perfect selection
 
 Metrics
   success        best grasp has IoU > 0.25 and |dtheta| < 30 deg with any ground-truth
@@ -79,6 +80,12 @@ def predict(args, dev):
             sel = torch.sigmoid(F.interpolate(s(P, T), size=q.shape[-1], mode="bilinear",
                                               align_corners=False))[:, 0].cpu().numpy()
             q = q * sel
+        elif args.method == "oracle":                    # perfect selection: the instruction's own rectangles
+            for i, gt in enumerate(b["gt"]):
+                m = np.zeros(q.shape[1:], dtype=np.float32)
+                for r in gt:
+                    m[polygon(*corners(r).T, shape=m.shape)] = 1.0
+                q[i] = q[i] * m
         for i in range(len(b["scene"])):
             qi = gaussian(q[i], 2.0, preserve_range=True)        # as in GR-ConvNet post-processing
             pred = decode(qi, maps["cos"][i], maps["sin"][i], maps["w"][i], maps["h"][i])
@@ -117,7 +124,7 @@ def summarise(ann, recs, size=224):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--method", required=True, choices=["gxs", "g_only", "additive"])
+    ap.add_argument("--method", required=True, choices=["gxs", "g_only", "additive", "oracle"])
     ap.add_argument("--split", default="test_seen")
     ap.add_argument("--data", required=True)
     ap.add_argument("--clip-dir", required=True)
