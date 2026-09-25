@@ -1,0 +1,40 @@
+{
+  "train": {
+    "scenes": 20122,
+    "objects": 40841,
+    "instructions": 118292,
+    "multi_object_scenes": 17572
+  },
+  "val": {
+    "scenes": 500,
+    "objects": 1107,
+    "instructions": 3259,
+    "multi_object_scenes": 500
+  },
+  "test_seen": {
+    "scenes": 419,
+    "objects": 515,
+    "instructions": 1376,
+    "multi_object_scenes": 101
+  },
+  "test_unseen": {
+    "scenes": 194,
+    "objects": 212,
+    "instructions": 601,
+    "multi_object_scenes": 17
+  },
+  "train_part_pairs_identical_labels": {
+    "pairs": 118563,
+    "identical": 94987,
+    "ratio": 0.8012
+  },
+  "dropped": {
+    "official_R2": 1367,
+    "official_R1": 37,
+    "official_R3": 4,
+    "extra_R2": 9450,
+    "extra_R3": 98
+  },
+  "official_train_scenes_kept": 8122,
+  "extra_train_scenes": 12000
+}

@@ -2,7 +2,7 @@
 # Train every component and evaluate every row of the ablation table.
 # Usage: bash scripts/run_all.sh DATA_DIR CLIP_DIR RUNS_DIR [G_EPOCHS] [S_EPOCHS]
 set -euo pipefail
-DATA=$1; CLIP=$2; RUNS=$3; GE=${4:-30}; SE=${5:-10}
+DATA=$1; CLIP=$2; RUNS=$3; GE=${4:-12}; SE=${5:-4}
 W=${WORKERS:-2}
 mkdir -p "$RUNS/results"
 [ -f "$DATA/images224.u8.json" ] || python scripts/cache_images.py --data "$DATA"

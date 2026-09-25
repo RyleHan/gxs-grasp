@@ -1,0 +1,13 @@
+split=test_unseen
+method      single-obj  multi-obj
+g_only           49.4%      41.9%   (n=496/105)
+additive         50.4%      38.1%   (n=496/105)
+gxs_zs           60.7%      46.7%   (n=496/105)
+gxs_full         60.3%      49.5%   (n=496/105)
+gxs              60.9%      49.5%   (n=496/105)
+oracle           90.9%      83.8%   (n=496/105)
+
+3 scenes where G x S gets both objects right and G-only does not:
+  --scenes cba64907fac25a71a304adb2dbff8d7efca4aae9425d606051febf7c440431dc --objs 0,1
+  --scenes d79626ce1b5ce82bd49941205f4dad9a9f8171b3622ebf51329dae18c5624983 --objs 0,1
+  --scenes e9cd5dab31bf229759e67e98a7adb79c22adf0995950afb94a6fd4c128cb55c6 --objs 0,1

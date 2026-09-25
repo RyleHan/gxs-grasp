@@ -26,7 +26,29 @@ image; a new instruction only costs one dot product.
 
 ## Results
 
-_Filled in from `runs/results/table.md` after training._
+Official Grasp-Anything++ test split (seen: 1,376 instructions, 105 object pairs; unseen: 601).
+All rows share the training data and schedule below; numbers are **not** comparable with published
+results, which use different training data.
+
+| Method | seen success | seen paired | seen select | unseen success |
+|---|---|---|---|---|
+| G only (ignores the instruction) | 39.9 | 9.5 | 48.4 | 48.1 |
+| GR-ConvNet + CLIP, additive | 45.5 | 15.2 | 59.1 | 48.2 |
+| G×S, zero-shot S | 55.3 | 29.5 | 68.6 | 58.2 |
+| G×S, S negatives on all patches | 54.4 | 27.6 | 70.1 | 58.4 |
+| **G×S** | **59.6** | **32.4** | **73.0** | **58.9** |
+| G + perfect selection (upper bound) | 88.9 | 79.0 | 98.5 | 89.7 |
+
+![qualitative](assets/fig_qual.png)
+
+*`Fetch apple by its skin.` / `Grip spoon on its utensil.` — G is shared, S follows the sentence,
+Q = G·S places the grasp.*
+
+Per-sample predictions, training logs and the single-/multi-object breakdown are in `results/`.
+The exact scene lists of every split are in `splits/`.
+
+Training (one free Colab T4): CLIP features 11 min, G 36 min (12 epochs), additive baseline 39 min
+(12 epochs), the three S variants jointly 29 min (4 epochs).
 
 ## Setup
 

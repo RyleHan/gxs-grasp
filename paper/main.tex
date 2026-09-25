@@ -33,9 +33,10 @@ to 58.9\% on unseen categories, and doubles the rate at which both grasps of an 
 \centering
 \includegraphics[width=\textwidth]{fig_qual.png}
 \vspace{-6mm}
-\caption{A test image with two instructions. $G$ ignores the text and peaks on the spoon; $S$ follows
-the sentence, so $Q=G\cdot S$ grasps the apple for $\ell_1$ and the spoon for $\ell_2$ (predicted
-rectangles in the instruction's colour, ground truth in the first panel).}
+\caption{A test image with $\ell_1$ = \emph{``Fetch apple by its skin.''} (green) and
+$\ell_2$ = \emph{``Grip spoon on its utensil.''} (orange); ground truth in the first panel. $G$ ignores the
+text and peaks on the spoon; $S$ follows the sentence, so $Q=G\cdot S$ grasps the apple for $\ell_1$ and
+the spoon for $\ell_2$. $S(\ell_2)$ is also high on the background, which $G$ removes.}
 \label{fig:qual}
 \vspace{-3mm}
 \end{figure*}

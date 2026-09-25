@@ -1,0 +1,22 @@
+split=test_seen
+method      single-obj  multi-obj
+g_only           40.7%      38.9%   (n=787/589)
+additive         43.1%      48.7%   (n=787/589)
+gxs_zs           55.5%      55.0%   (n=787/589)
+gxs_full         53.6%      55.5%   (n=787/589)
+gxs              60.2%      58.7%   (n=787/589)
+oracle           89.6%      87.9%   (n=787/589)
+
+26 scenes where G x S gets both objects right and G-only does not:
+  --scenes 0e72d0c7fae3c41089811a309d1c6944ccdf74fb7b5e16cbd154f68132f0524d --objs 0,1
+  --scenes 1bc6b5c7d78b4f5fdcebd76d05eef08843cc493aa8572b62c384c8bf58c020a4 --objs 0,1
+  --scenes 2434e8a1bf47f7df89a9e0bad2981aaaa4d287a277704e30c69ea4ef5fea71c8 --objs 0,1
+  --scenes 278c64c065533a53640c714d3ade983fa485e95f3b085cda1acac6155a732a77 --objs 0,1
+  --scenes 29751840cd27099df2998d39df6c8386675309cfc84483602b4e5132fdb10b00 --objs 0,1
+  --scenes 4ce2a94b760448c4acbeb07048aa511755b7c549c4726cf7b99f14c1539e8d44 --objs 0,1
+  --scenes 536e7342338c855038f412d09af9b7aa116b9034fe003b92124d643884c63477 --objs 0,1
+  --scenes 640a5724427112962ca630c49041480644fd5e597df444562f4db3901482fd62 --objs 0,1
+  --scenes 69974e1cf6e29097c695a7c571377aab36ecd4e40b698fee2e34a833cb061c27 --objs 0,1
+  --scenes 70232992824d8a9c7b9b525d1f91aa712ccc6b0763654fd413167d623bfcad0e --objs 0,1
+  --scenes 7602ff9c5cdacd0d1dc6c4d7d6f79614a7ec109133fd425af66937b98bd2a8dc --objs 0,1
+  --scenes 787bfa61437f7a9b88b7cdefde09b419355bb9294534eec3b721da20cfa35e88 --objs 0,1
