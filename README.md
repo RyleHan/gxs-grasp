@@ -26,9 +26,13 @@ image; a new instruction only costs one dot product.
 
 ## Results
 
-Official Grasp-Anything++ test split (seen: 1,376 instructions, 105 object pairs; unseen: 601).
+Official Grasp-Anything++ test split, keeping the objects whose instructions are released
+(seen: 515 objects, 1,376 instructions, 105 object pairs; unseen: 212 objects, 601 instructions).
 All rows share the training data and schedule below; numbers are **not** comparable with published
-results, which use different training data.
+results, which use different training data. Note that S uses CLIP's image encoder while the additive
+baseline sees CLIP only through the text, so the gap between them is not due to the factorisation
+alone. The last row restricts G to the instruction's ground-truth rectangles and is an optimistic
+bound.
 
 | Method | seen success | seen paired | seen select | unseen success |
 |---|---|---|---|---|
@@ -96,8 +100,10 @@ A prediction is correct if its IoU with any ground-truth rectangle of that instr
 0.25 and the angle differs by less than 30° (LGD / GR-ConvNet protocol). We additionally report
 
 * **paired success** — for every pair of objects in a multi-object test image, both grasps must
-  be correct; a model that ignores the instruction scores near zero here;
-* **selection** — the predicted centre lies on the target object rather than another object.
+  be correct; a model that ignores the instruction passes only when the two grasp sets overlap
+  (9.5% for G alone);
+* **selection** — in multi-object test images, the predicted centre falls inside the ground-truth
+  rectangles of the target object.
 
 ## Acknowledgements
 
