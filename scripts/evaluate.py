@@ -119,7 +119,7 @@ def summarise(ann, recs, size=224):
     out["n_pairs"] = len(pairs)
     out["paired"] = float(np.mean(pairs)) if pairs else float("nan")
     out["select"] = float(np.mean(sel)) if sel else float("nan")
-    return {k: (round(float(v), 4) if isinstance(v, float) else v) for k, v in out.items()}
+    return {k: (float(v) if isinstance(v, (float, np.floating)) else v) for k, v in out.items()}
 
 
 def main():

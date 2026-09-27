@@ -30,14 +30,13 @@ Official Grasp-Anything++ test split, keeping the objects whose instructions are
 (seen: 515 objects, 1,376 instructions, 105 object pairs; unseen: 212 objects, 601 instructions).
 All rows share the training data and schedule below; numbers are **not** comparable with published
 results, which use different training data. Note that S uses CLIP's image encoder while the additive
-baseline sees CLIP only through the text, so the gap between them is not due to the factorisation
-alone. The last row restricts G to the instruction's ground-truth rectangles and is an optimistic
+baseline sees CLIP only through the text, so this comparison does not isolate the factorisation. The last row restricts G to the instruction's ground-truth rectangles and is an optimistic
 bound.
 
 | Method | seen success | seen paired | seen select | unseen success |
 |---|---|---|---|---|
 | G only (ignores the instruction) | 39.9 | 9.5 | 48.4 | 48.1 |
-| GR-ConvNet + CLIP, additive | 45.5 | 15.2 | 59.1 | 48.2 |
+| GR-ConvNet + CLIP, additive | 45.5 | 15.2 | 59.1 | 48.3 |
 | G×S, zero-shot S | 55.3 | 29.5 | 68.6 | 58.2 |
 | G×S, S negatives on all patches | 54.4 | 27.6 | 70.1 | 58.4 |
 | **G×S** | **59.6** | **32.4** | **73.0** | **58.9** |
