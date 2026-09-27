@@ -19,15 +19,16 @@
 \maketitle
 
 \begin{abstract}
-Language-driven grasp detectors feed the instruction to the whole network, although the sentence only
-decides \emph{where} to grasp, not how wide or at which angle. We factorise grasp quality into a
-language-free \emph{graspability} map $G$ and an instruction-conditioned \emph{selection} map $S$.
-$G$ is a GR-ConvNet trained on the union of all grasps annotated in an image; $S$ compares frozen dense
-CLIP features with the instruction and only has to choose among graspable regions. Both are supervised
-by labels Grasp-Anything++ already has: almost every image carries several instructions whose grasps
-act as each other's negatives, so no masks are needed. With the same grasp backbone and training data, \ours raises
-the success rate over an additive GR-ConvNet\,+\,CLIP baseline from 45.5\% to 59.6\% on seen and from 48.3\%
-to 58.9\% on unseen categories, and doubles the rate at which both grasps of an object pair succeed.
+Language-driven grasp detectors condition the whole network on the instruction, although the
+instruction mainly decides \emph{where} to grasp; width and angle follow from the object's
+shape. We therefore split grasp quality into two maps. The \emph{graspability} map $G$ is
+a GR-ConvNet that never sees the text, trained on the union of all grasps annotated in an image.
+The \emph{selection} map $S$ compares frozen dense CLIP features with the instruction and only has to choose
+among graspable regions. Both maps are trained with the existing Grasp-Anything++ labels, because almost
+every image has several instructions whose grasps serve as negatives for each other. With the same grasp
+backbone and training data, \ours improves the success rate of an additive GR-ConvNet\,+\,CLIP baseline
+from 45.5\% to 59.6\% on seen and from 48.3\% to 58.9\% on unseen categories, and more than doubles
+the rate at which both objects of a pair are grasped.
 \end{abstract}
 
 \begin{figure*}[t]
@@ -35,81 +36,81 @@ to 58.9\% on unseen categories, and doubles the rate at which both grasps of an 
 \includegraphics[width=0.98\textwidth]{fig_qual.png}
 \vspace{-6mm}
 \caption{A test image with $\ell_1$ = \emph{``Fetch apple by its skin.''} (green) and
-$\ell_2$ = \emph{``Grip spoon on its utensil.''} (orange); ground truth in the first panel. $G$ ignores the
-text and peaks on the spoon; $S$ follows the sentence, so $Q=G\cdot S$ grasps the apple for $\ell_1$ and
-the spoon for $\ell_2$. $S(\ell_2)$ is also high on the background, which $G$ removes.}
+$\ell_2$ = \emph{``Grip spoon on its utensil.''} (orange); the first panel shows the ground truth. $G$ does
+not use the text and is highest on the spoon. $S$ changes with the instruction, so $Q=G\cdot S$ picks the
+apple for $\ell_1$ and the spoon for $\ell_2$. $S(\ell_2)$ is also high on the background, but $G$
+suppresses it there.}
 \label{fig:qual}
 \vspace{-3mm}
 \end{figure*}
 
 \section{Introduction}
-To follow \emph{``grip the keychain by its ring''} a robot must find what the sentence refers to and
-decide how a parallel gripper closes on it. The public release of Grasp-Anything++~\cite{vuong2024lgd} pairs
-about 0.8M synthetic scenes with 4.4M such instructions, and detectors trained on it condition the
-entire network on the text~\cite{vuong2024lgd,vo2024maskgrasp}.
+To \emph{``grip the keychain by its ring''}, a robot has to find the object the sentence refers to
+and decide how to close a parallel gripper on it. The public release of
+Grasp-Anything++~\cite{vuong2024lgd} contains about 0.8M synthetic scenes with 4.4M such instructions,
+and detectors trained on it condition the whole network on the text~\cite{vuong2024lgd,vo2024maskgrasp}.
 
-Two properties of the data point to a simpler design. First, the opening and angle of a grasp at a
-pixel follow from the object's shape, so the sentence only has to pick the location. Second, each image
-comes with one instruction per annotated object. Together, their grasps mark the graspable regions of
-all annotated objects, and each instruction only singles out some of them. \ours therefore
-predicts $Q=G\cdot S$. We contribute (i) a factorised detector whose geometry heads never
-see the text, (ii) a sibling-contrast loss that trains selection without masks, and (iii) a paired metric
-and an oracle analysis indicating that most errors come from selection.
+Two observations about this data motivate our design. First, the opening and angle of a grasp at a
+pixel are set by the object's shape, so the text only needs to pick the location. Second, an
+image comes with one instruction for each annotated object. Their grasps together cover the graspable
+regions of these objects, and each instruction refers to only some of them. \ours therefore predicts
+$Q=G\cdot S$. We contribute a factorised detector whose geometry heads never see
+the text, a sibling-contrast loss that trains selection without mask labels, and a paired metric and
+oracle analysis suggesting that most errors come from selection.
 
 \section{Related Work}
-CLIPort~\cite{shridhar2021cliport} fuses CLIP~\cite{radford2021clip} into dense pick affordances;
-CROG~\cite{tziafas2023crog} adds grasp maps to CLIP-based referring segmentation~\cite{wang2022cris}.
-On Grasp-Anything++~\cite{vuong2024lgd}, built on Grasp-Anything~\cite{vuong2024graspanything},
-LGD casts grasping as conditional diffusion and mask-guided methods~\cite{vo2024maskgrasp,bhat2025maplegrasp} use object masks to focus
-the grasp features. We multiply at the \emph{output}, keep geometry language-free and use no mask labels.
+CLIPort~\cite{shridhar2021cliport} fuses CLIP~\cite{radford2021clip} features into dense pick
+affordances, and CROG~\cite{tziafas2023crog} adds grasp maps to CLIP-based referring
+segmentation~\cite{wang2022cris}. On Grasp-Anything++~\cite{vuong2024lgd}, an extension
+of Grasp-Anything~\cite{vuong2024graspanything}, LGD treats grasp detection as conditional
+diffusion, and mask-guided methods~\cite{vo2024maskgrasp,bhat2025maplegrasp} use object masks to focus
+the grasp features. We instead combine two branches only at the output, keep the geometry
+free of language and use no mask labels.
 
 \section{Method}
-Given an image $I$ and an instruction $\ell$ we predict $g=(x,y,w,h,\theta)$.
-
-\para{Graspability.}A GR-ConvNet~\cite{kumra2020grconvnet} maps $I$ to $224{\times}224$ maps of
-quality logits $q$, $\cos2\theta$, $\sin2\theta$, opening $w$ and jaw size $h$; none of them sees $\ell$.
-For an image with instructions $\ell_{1..K}$ and grasp sets $\mathcal{G}_{1..K}$, targets are drawn from
-$\bigcup_k\mathcal{G}_k$ and
+Given an image $I$ and an instruction $\ell$, we predict a grasp $g=(x,y,w,h,\theta)$.
+\para{Graspability.}A GR-ConvNet~\cite{kumra2020grconvnet} maps $I$ to five $224{\times}224$ maps:
+quality logits $q$, $\cos2\theta$, $\sin2\theta$, opening $w$ and jaw size $h$. None of them depends
+on $\ell$. If an image has instructions $\ell_{1..K}$ with grasp sets $\mathcal{G}_{1..K}$, we draw the
+targets from $\bigcup_k\mathcal{G}_k$ and minimise
 \begin{equation}
 \mathcal{L}_G=\mathrm{BCE}(q,\hat q)+\textstyle\sum_{m}\big\lVert (m-\hat m)\odot\hat q\big\rVert_{\text{sL1}},
 \end{equation}
-where $\hat q$ marks the centre third of each rectangle and $m$ runs over the geometry maps.
-Restricting the geometry loss to grasp pixels was necessary. With GR-ConvNet's dense regression, the
-predicted opening on the scenes we checked stayed below 15\,px (labels: 73--89\,px), even when
-overfitting 70 scenes.
+where $\hat q$ marks the centre third of each rectangle and $m$ runs over the geometry maps. Computing the
+geometry loss only on grasp pixels was necessary: with GR-ConvNet's dense regression, the predicted
+opening stayed below 15\,px on the scenes we checked (labels: 73--89\,px), even when overfitting 70 scenes.
 
-\para{Selection.}Frozen CLIP ViT-B/16 at $448^2$ gives $28{\times}28$ patch features $v_p$ from the
-value path of its last block~\cite{zhou2022maskclip,lan2024clearclip}; $t$ is the text embedding.
-With zero-initialised residual adapters $\phi,\psi$,
+\para{Selection.}We run a frozen CLIP ViT-B/16 at $448{\times}448$ and take $28{\times}28$ patch features
+$v_p$ from the value path of its last block~\cite{zhou2022maskclip,lan2024clearclip}. With text embedding $t$ and
+zero-initialised residual adapters $\phi,\psi$,
 \begin{equation}
 S(p\mid\ell)=\sigma\big(\tau\langle\phi(v_p),\psi(t)\rangle+b\big).
 \end{equation}
-For $\ell_k$, patches covered by $\mathcal{G}_k$ are positives, those covered by a sibling
-$\mathcal{G}_{j\ne k}$ negatives, and the rest is ignored because $G$ already suppresses it
-(class-balanced BCE).
+For $\ell_k$, patches covered by $\mathcal{G}_k$ are positives and patches covered by a sibling
+$\mathcal{G}_{j\ne k}$ are negatives. The loss is a class-balanced BCE; other patches
+are ignored, since $G$ suppresses them.
 
-\para{Inference.}$Q=\sigma(q)\cdot S$ with $S$ upsampled; the centre is $\arg\max Q$ after Gaussian smoothing, and
-$\theta,w,h$ are read from $G$ (Fig.~\ref{fig:qual}). A new instruction costs one dot product per patch.
+\para{Inference.}$Q=\sigma(q)\cdot S$ with $S$ upsampled. The grasp centre is the maximum of $Q$
+after Gaussian smoothing; $\theta,w,h$ are read from $G$ there (Fig.~\ref{fig:qual}).
 
 \section{Experiments}
-\para{Data.}We test on the official LGD splits, keeping the 515 seen and 212 unseen objects whose
-instructions are released (1{,}376 and 601 instructions). Of the
-8{,}374 official training images with released instructions, only 1{,}668 list two or more objects. We keep its
-images that pass our filters (8{,}122) with every annotated object, and add 12{,}000 multi-object scenes
-of the full release; filters drop test scenes, object names outside the training vocabulary and
-duplicate names in an image. This gives
-20{,}122 training images (118{,}292 instructions) and 500 for validation. In 80.1\% of part pairs of
-the same object the grasp labels are identical, and our subset has only 2{,}855 distinct sentences,
-so the instruction mainly serves to pick the object.
+\para{Data.}We test on the official LGD splits and keep the 515 seen and 212 unseen objects
+whose instructions are released (1{,}376 and 601 instructions). The official training split has
+8{,}374 images with released instructions, but only 1{,}668 of them list two or more objects. We keep
+the 8{,}122 of them that pass our filters and add 12{,}000 multi-object scenes from the full release;
+the filters remove test scenes, object names outside the training vocabulary and duplicate names. This gives 20{,}122 training images (118{,}292
+instructions) and 500 validation images. In 80.1\% of part pairs of the same object the grasps are
+identical, and our subset has only 2{,}855 distinct sentences, so the instruction mostly names
+the object.
 
-\para{Metrics.}\emph{Success}: IoU $>0.25$ and $|\Delta\theta|<30^\circ$ with a ground-truth grasp of
-the instruction~\cite{vuong2024lgd}. The next two use multi-object test images only. \emph{Paired}: both
-grasps of an object pair succeed. \emph{Select}: the predicted centre falls inside the ground-truth
-rectangles of the target object.
+\para{Metrics.}A grasp succeeds if its IoU with a ground-truth grasp of the instruction exceeds 0.25
+and its angle error is below $30^\circ$~\cite{vuong2024lgd}. On multi-object test images we also
+report \emph{paired} (both grasps of an object pair succeed) and \emph{select} (the predicted centre
+lies in the target object's ground-truth rectangles).
 
-\para{Setup.}$G$ and the additive baseline (same backbone, CLIP text added at the bottleneck) train for
-12 epochs (Adam, $10^{-3}$, cosine, batch 32); $S$ starts from zero-shot CLIP and trains for 4, all on one
-free Colab T4 in about two hours.
+\para{Setup.}$G$ and the additive baseline (same backbone, CLIP text feature added at the bottleneck)
+are trained for 12 epochs (Adam, $10^{-3}$, cosine, batch 32), and $S$ for 4 epochs from
+zero-shot CLIP, in about two hours on a free Colab T4.
 
 \begin{table}[t]
 \centering\small
@@ -129,26 +130,25 @@ GR-ConvNet + CLIP, additive & 45.5 & 15.2 & 59.1 & 48.3\\
 \textcolor{gray}{$G$ + perfect selection} & \textcolor{gray}{88.9} & \textcolor{gray}{79.0} & \textcolor{gray}{98.5} & \textcolor{gray}{89.7}\\
 \bottomrule
 \end{tabular}
-\caption{Results (\%) on the official test split (105 seen object pairs). The last row replaces $S$ by
-the instruction's ground-truth rectangles, an optimistic bound.}
+\caption{Results (\%) on the official test split (105 seen object pairs). In the last row, $S$ is
+replaced by the instruction's ground-truth rectangles, which gives an optimistic bound.}
 \label{tab:main}
 \end{table}
 
-\para{Results.}The additive baseline is 5.6 points above $G$ alone (Table~\ref{tab:main});
-multiplying the same $G$ by a selection map adds 19.7. The baseline sees CLIP only through the text,
-whereas $S$ also uses CLIP's image encoder, so this comparison does not isolate the factorisation. Zero-shot CLIP already reaches 55.3\% and sibling-contrast training adds 4.3
-points, whereas treating background as negative lowers accuracy, also when validation objects are
-ranked by $S$ (66.3\% zero-shot, 64.6\% all patches, 71.1\% ours). Restricting $G$ to the
-ground-truth rectangles gives 88.9\%, so most remaining errors lie in selection rather than geometry.
-The gain carries over to unseen categories, presumably because $S$ inherits CLIP's vocabulary, and to
-images with a single annotated object (40.7\% for $G$ alone, 60.2\% for \ours), which likely contain unlabelled objects that
-$G$ also finds graspable. Published results use other training data, so we compare only methods
-trained here.
+\para{Results.}The additive baseline is 5.6 points above $G$ alone (Table~\ref{tab:main}), while
+multiplying the same $G$ by a selection map adds 19.7. The baseline uses CLIP only for the
+text, whereas $S$ also uses its image encoder, so this comparison does not isolate the factorisation.
+Zero-shot CLIP already reaches 55.3\%, and the sibling-contrast loss adds 4.3 points. Using all
+background patches as negatives lowers accuracy, also when we rank the objects of
+validation images by $S$ (66.3\% zero-shot, 64.6\% all patches, 71.1\% ours). Restricting $G$
+to the ground-truth rectangles gives 88.9\%, so most remaining errors come from selection. The improvement also holds for unseen categories, probably
+because $S$ inherits CLIP's vocabulary, and for images with a single annotated object (40.7\% for $G$
+alone, 60.2\% for \ours), which likely contain unlabelled objects that $G$ finds graspable. Published results use other training data, so we only compare methods trained here.
 
 \section{Conclusion}
-Geometry can be learned from every annotated grasp in an image and selection from the contrast between sibling
-instructions, without extra labels. CLIP's $28{\times}28$ grid is too coarse for small parts, although the
-labels rarely tell parts apart.
+Grasp geometry can be learned from all annotated grasps of an image, and selection from the contrast
+between sibling instructions, without extra labels. A limitation is the $28{\times}28$ CLIP grid, which
+is too coarse for small parts, although the current labels rarely distinguish parts.
 
 {\footnotesize
 \bibliographystyle{ieeenat_fullname}
